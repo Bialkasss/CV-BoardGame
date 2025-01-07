@@ -357,14 +357,14 @@ def detect_circles_and_dice_in_video(video_path):
     cv2.destroyAllWindows()
 
 # Example usage:
-detect_circles_and_dice_in_video('./materials/E3.MP4')
+# detect_circles_and_dice_in_video('./materials/E3.MP4')
 # detect_circles_and_dice_in_video('./materials/E2.mp4')
 # detect_circles_and_dice_in_video('./materials/H1-angle-F.MP4')
 # detect_circles_and_dice_in_video('./materials/H2-angle-F.MP4')
 # detect_circles_and_dice_in_video('./materials/H3.MP4')
 
 # ##Mary's
-# detect_circles_and_dice_in_video('./materials/E1-T-W.MP4')
+detect_circles_and_dice_in_video('./materials/E1-T-W.MP4')
 # detect_circles_and_dice_in_video('./materials/E2-T-L-W.MP4')
 # detect_circles_and_dice_in_video('./materials/E3-fastFinish.MP4')
 # detect_circles_and_dice_in_video('./materials/H1-angle-F.MP4')
