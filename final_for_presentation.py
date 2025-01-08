@@ -739,15 +739,15 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
 
 # ## WITHOUT SAVING
 # detect_circles_and_dice_in_video('./materials/E1.MP4')
-# detect_circles_and_dice_in_video('./materials/E1-2.MP4')
+detect_circles_and_dice_in_video('./materials/E1-2.MP4')
 # detect_circles_and_dice_in_video('./materials/E2.MP4')
 # detect_circles_and_dice_in_video('./materials/E3.MP4')
 
 # detect_circles_and_dice_in_video('./materials/M1.MP4')
 # detect_circles_and_dice_in_video('./materials/M2.MP4')
-detect_circles_and_dice_in_video('./materials/M3.MP4')
+# detect_circles_and_dice_in_video('./materials/M3.MP4')
 
 # detect_circles_and_dice_in_video('./materials/H1-better.MP4')
 # detect_circles_and_dice_in_video('./materials/H1.MP4')
 # detect_circles_and_dice_in_video('./materials/H2.MP4')
-detect_circles_and_dice_in_video('./materials/H3.MP4')
+# detect_circles_and_dice_in_video('./materials/H3.MP4')
