@@ -115,6 +115,11 @@ def compute_circle_size_and_tolerance():
     tolerance = 0.07 * circle_size
     return circle_size, tolerance
 
+def compute_circle_size_from_board(board):
+    distances = [np.linalg.norm(board[i][0] - board[(i+1) % 4][0]) for i in range(4)]
+    avg_distance = sum(distances) / len(distances)
+    return int(avg_distance / 6)
+
 
 def stabilize_circles(new_circles, previous_circles, alpha=1, distance_threshold=20):
     if previous_circles is None:
@@ -331,13 +336,11 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
     if not cap.isOpened():
         print("Error: Could not open video.")
         return
-
-    circle_size, tolerance = compute_circle_size_and_tolerance()
+    
     previous_circles = None
     start_time = None
     finish_triggered = False
     no_circle_duration = 4
-    circle_check_interval = 0.033
     have_small_dog =0
     have_big_dog =0
 
@@ -358,6 +361,12 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
     bottom_right = board_corners[3]
     square_side = int(w * 0.23)
     roi_size = (square_side, square_side)
+    
+    circle_size, tolerance = compute_circle_size_and_tolerance()
+    print(circle_size)
+    circle_size = compute_circle_size_from_board(board)
+    tolerance = 0.07 * circle_size
+    print(circle_size)
 
     orange_lower = np.array([4, 66, 114])
     orange_upper = np.array([15, 252, 253])
@@ -388,8 +397,7 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
             cv2.imread("./materials/cow.png"),
             cv2.imread("./materials/horse.png")
             ]
-    # wolf_template = cv2.imread("./materials/wolf_template.jpg", cv2.IMREAD_GRAYSCALE)
-    # wolf_template = cv2.imread("./materials/wolf.png", cv2.IMREAD_GRAYSCALE)
+
     wolf_template = cv2.imread("./materials/wolf_upright.png", cv2.IMREAD_GRAYSCALE)
     
     #for tracking dog buying
@@ -400,16 +408,16 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
     switch_wolf_animals = deque(maxlen=60)
     
     
-    # original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    # original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    # game_fps = cap.get(cv2.CAP_PROP_FPS)
-    # output_path = output_path
-    # output_video = cv2.VideoWriter(
-    #     output_path,
-    #     cv2.VideoWriter_fourcc(*"DIVX"),
-    #     game_fps,
-    #     (original_width, original_height),
-    # )
+    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    game_fps = cap.get(cv2.CAP_PROP_FPS)
+    output_path = output_path
+    output_video = cv2.VideoWriter(
+        output_path,
+        cv2.VideoWriter_fourcc(*"DIVX"),
+        game_fps,
+        (original_width, original_height),
+    )
 
     while True:
         ret, frame = cap.read()
@@ -417,8 +425,6 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
             break
         
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        
-        
         blurred = cv2.GaussianBlur(gray, (9, 9), 2)        
         
     #------------------------------------------- FINISH DETECTION by empty circles
@@ -446,19 +452,6 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
                 mask = np.zeros_like(gray, dtype=np.uint8)
                 cv2.circle(mask, (x, y), r, 255, -1)
 
-                # Get dominant color inside the circle
-                # dominant_color = get_dominant_color(frame, mask)
-                # color_name = f"RGB({dominant_color[2]}, {dominant_color[1]}, {dominant_color[0]})"
-                ## Draw the circle and bounding box
-                # cv2.circle(frame, (x, y), r, (0,0,255), 2)
-                ##checking whats the reason for false positives on empty spaces
-                # Put text (dominant color)
-                # cv2.putText(frame, color_name, (x - r, y - r - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-                
-                #debugging empty
-                # cv2.rectangle(frame, (x - r, y - r - 20), (x + r, y - r), (0,0,255), -1)
-                # cv2.putText(frame, "EMPTY", (x - r, y - r - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
-        
         if empty_circle_count == 0:
             if start_time is None:
                 start_time = time.time()
@@ -540,7 +533,8 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
             cv2.putText(frame, f"Pigs: {detected_animals[2]}", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
             cv2.putText(frame, f"Cows: {detected_animals[3]}", (10, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
             cv2.putText(frame, f"Horses: {detected_animals[4]}", (10, 170), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
-        #-------------------------------------------
+        #------------------------------------------
+    #Atack of wolf based on animals dissapearance 
         if 15- empty_circle_count > 0:
             apending =1
         else :
@@ -572,7 +566,7 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
         frame_with_border_masked = frame.copy()
         cv2.rectangle(frame_with_border_masked, board[0], 
                       board[3], (0, 0, 0), -1)
-#detect dog as circles, determine dog boxes
+#detect dog as circles, determine dog boxes, then frames it is in 
         roi_frame_right = frame[roi_bottom_right[1]:roi_bottom_right[1] + roi_bottom_right[3], 
                                roi_bottom_right[0]:roi_bottom_right[0] + roi_bottom_right[2]]
         roi_frame_left = frame[roi_bottom_left[1]:roi_bottom_left[1] + roi_bottom_left[3], 
@@ -623,23 +617,10 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
         cv2.putText(frame, f"Big dog: {have_big_dog}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (32, 50, 92), 2, cv2.LINE_AA)
         if sum(switch_dog) >0:
             cv2.putText(frame, "Got a dog", (200, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-            
+    #Show wolf if dog dissapears
         if sum(switch_wolf_dog) > 0:
             cv2.putText(frame, "Wolf attacked", (200, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-# # #visualise left dogs
-#         if circles_left is not None:
-#             circles_left = np.uint16(np.around(circles_left))
-#             for circle in circles_left[0, :]:
-#                 cv2.circle(roi_frame_left, (circle[0], circle[1]), circle[2], (60, 103, 155), 2)
-# #visualise right dogs
-#         if circles_right is not None:
-#             circles_right = np.uint16(np.around(circles_right))
-#             for circle in circles_right[0, :]:
-#                 cv2.circle(roi_frame_right, (circle[0], circle[1]), circle[2], (60, 103, 155), 2)
-#         cv2.rectangle(frame, roi_bottom_right[:2], (roi_bottom_right[0] + roi_size[0], roi_bottom_right[1] + roi_size[1]), (60, 103, 155), 2)
-#         cv2.rectangle(frame, roi_bottom_left[:2], (roi_bottom_left[0] + roi_size[0], roi_bottom_left[1] + roi_size[1]), (60, 103, 155), 2)
-        
+  
 # Detect dice
         hsv_frame = cv2.cvtColor(frame_with_border_masked, cv2.COLOR_BGR2HSV)
         orange_mask = cv2.inRange(hsv_frame, orange_lower, orange_upper)
@@ -668,7 +649,7 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
                     detected_bboxes.append((x, y, w, h, area))
 
         current_time = time.time()
-        
+#trackers for dice         
         for bbox_data in detected_bboxes:
             bbox = bbox_data[:4]
             is_new = True
@@ -702,44 +683,20 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
                 trackers[i] = None
 
         trackers = [t for t in trackers if t is not None]
-        # output_video.write(frame)
-        cv2.imshow("Circles and Dice in Video", frame)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        output_video.write(frame)
+        
+        # cv2.imshow("Circles and Dice in Video", frame)
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     break
 
     cap.release()
-    # output_video.release()
+    output_video.release()
     cv2.destroyAllWindows()
-
-# Example usage:
-# detect_circles_and_dice_in_video('./materials/E3.MP4')
-# detect_circles_and_dice_in_video('./materials/E2.mp4')
-# detect_circles_and_dice_in_video('./materials/H1-angle-F.MP4')
-# detect_circles_and_dice_in_video('./materials/H2-angle-F.MP4')
-# detect_circles_and_dice_in_video('./materials/H3.MP4')
-
-# detect_circles_and_dice_in_video('./materials/E1-short.MP4')u
-
-# ## Final movies (download at semestr5)
-# detect_circles_and_dice_in_video('./materials/E1.MP4', "./output/oE1.avi")
-# detect_circles_and_dice_in_video('./materials/E1-2.MP4', "./output/oE1-2.avi")
-# detect_circles_and_dice_in_video('./materials/E2.MP4', "./output/oE2.avi")
-# detect_circles_and_dice_in_video('./materials/E3.MP4', "./output/oE3.avi")
-
-# detect_circles_and_dice_in_video('./materials/M1.MP4', "./output/oM1.avi")
-# detect_circles_and_dice_in_video('./materials/M2.MP4', "./output/oM2.avi")
-# detect_circles_and_dice_in_video('./materials/M3.MP4', "./output/oM3.avi")
-
-# detect_circles_and_dice_in_video('./materials/H1-better.MP4', "./output/oH1-b.avi")
-# detect_circles_and_dice_in_video('./materials/H1.MP4', "./output/oH1.avi")
-# detect_circles_and_dice_in_video('./materials/H2.MP4', "./output/oH2.avi")
-# detect_circles_and_dice_in_video('./materials/H3.MP4', "./output/oH3.avi")
 
 
 # ## WITHOUT SAVING
 # detect_circles_and_dice_in_video('./materials/E1.MP4')
-detect_circles_and_dice_in_video('./materials/E1-2.MP4')
+# detect_circles_and_dice_in_video('./materials/E1-2.MP4')
 # detect_circles_and_dice_in_video('./materials/E2.MP4')
 # detect_circles_and_dice_in_video('./materials/E3.MP4')
 
