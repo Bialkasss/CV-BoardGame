@@ -67,36 +67,6 @@ def is_overlap(bbox1, bbox2):
     x2, y2, w2, h2 = bbox2
     return not (x1 + w1 < x2 or x2 + w2 < x1 or y1 + h1 < y2 or y2 + h2 < y1)
 
-def is_overlap_with_tolerance(bbox1, bbox2, tolerance=1.2):
-    x1, y1, w1, h1 = bbox1
-    x2, y2, w2, h2 = bbox2
-
-    # Calculate the intersection coordinates
-    inter_x1 = max(x1, x2)
-    inter_y1 = max(y1, y2)
-    inter_x2 = min(x1 + w1, x2 + w2)
-    inter_y2 = min(y1 + h1, y2 + h2)
-
-    # Check if there is no intersection
-    if inter_x1 >= inter_x2 or inter_y1 >= inter_y2:
-        return False
-
-    # Calculate intersection area
-    inter_area = (inter_x2 - inter_x1) * (inter_y2 - inter_y1)
-
-    # Calculate the areas of both boxes
-    area1 = w1 * h1
-    area2 = w2 * h2
-
-    # Calculate average area
-    avg_area = (area1 + area2) / 2
-
-    # Calculate the overlap ratio
-    overlap_ratio = inter_area / avg_area
-
-    # Return whether the overlap ratio is within the tolerance
-    return overlap_ratio > tolerance
-
 
 def is_valid_color(frame, bbox, orange_lower, orange_upper, blue_lower, blue_upper, threshold=0.3):
     x, y, w, h = bbox
@@ -109,11 +79,6 @@ def is_valid_color(frame, bbox, orange_lower, orange_upper, blue_lower, blue_upp
     total_pixels = w * h
     return (orange_pixels + blue_pixels) / total_pixels >= threshold
 
-
-def compute_circle_size_and_tolerance():
-    circle_size = 50  # Average circle radius in pixels
-    tolerance = 0.07 * circle_size
-    return circle_size, tolerance
 
 def compute_circle_size_from_board(board):
     distances = [np.linalg.norm(board[i][0] - board[(i+1) % 4][0]) for i in range(4)]
@@ -203,8 +168,6 @@ def match_templates(region, templates):
     best_score = float('-inf')
 
     for i, template in enumerate(templates):
-        # cv2.imshow("template", template)
-        # Resize the region to match the template size
         resized_region = resize_region(region, template)
         
         # Perform template matching
@@ -217,117 +180,6 @@ def match_templates(region, templates):
             best_match_idx = i
 
     return best_match_idx, best_score
-
-def orb_match(fragment_gray, template_gray, match_threshold=15):
-    """
-    Matches features between a frame fragment and a template using ORB.
-
-    Parameters:
-        frame_fragment (numpy.ndarray): The image fragment to check.
-        template (numpy.ndarray): The template to compare against.
-        match_threshold (int): Minimum number of good matches to confirm a match.
-
-    Returns:
-        bool: True if the fragment matches the template, False otherwise.
-    """
-    orb = cv2.ORB_create()
-
-    # Detect keypoints and compute descriptors
-    kp1, des1 = orb.detectAndCompute(fragment_gray, None)
-    kp2, des2 = orb.detectAndCompute(template_gray, None)
-
-    # Check if descriptors are valid
-    if des1 is None or des2 is None or len(des1) == 0 or len(des2) == 0:
-        return False
-
-    # Ensure descriptors have matching types
-    if des1.dtype != des2.dtype:
-        des2 = des2.astype(des1.dtype)
-
-    # Use BFMatcher to find matches
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    matches = bf.match(des1, des2)
-
-    # Filter matches by distance
-    good_matches = [m for m in matches if m.distance < 30]  # Adjust threshold as needed
-
-    # Check if the number of good matches exceeds the threshold
-    return len(good_matches) >= match_threshold
-
-
-def template_match(frame_fragment, template, threshold=0.6):
-    """
-    Determines if the template exists in the frame fragment using template matching.
-
-    Parameters:
-        frame_fragment (numpy.ndarray): The fragment of the video frame.
-        template (numpy.ndarray): The template image to be matched.
-        threshold (float): Minimum similarity threshold for a match.
-
-    Returns:
-        bool: True if the template matches the frame fragment, False otherwise.
-    """
-    # Perform template matching
-    result = cv2.matchTemplate(frame_fragment, template, cv2.TM_SQDIFF_NORMED)
-    
-    #todelete
-    # cv2.imshow("frame",frame_fragment)
-    # cv2.imshow("wolf",template)
-    # if cv2.waitKey(2000) & 0xFF == ord('q'):
-    #     cv2.destroyWindow("frame")
-    #     cv2.destroyWindow("wolf")
-    #
-    # Find the maximum similarity value
-    _, max_val, _, _ = cv2.minMaxLoc(result)
-
-    # Return True if the maximum value exceeds the threshold
-    return max_val >= threshold
-
-
-def match_features(region, templates):
-    """
-    Matches the detected region with each template using feature matching.
-
-    Parameters:
-        region (numpy.ndarray): Detected region (animal from video).
-        templates (list): List of template images.
-
-    Returns:
-        int: Index of the most similar template.
-        float: Matching score of the best match.
-    """
-    orb = cv2.ORB_create()
-    best_match_idx = -1
-    best_score = 0
-
-    # Convert the region to grayscale
-    region_gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-
-    # Detect keypoints and descriptors for the region
-    kp1, des1 = orb.detectAndCompute(region_gray, None)
-
-    for i, template in enumerate(templates):
-        # Convert the template to grayscale
-        template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-
-        # Detect keypoints and descriptors for the template
-        kp2, des2 = orb.detectAndCompute(template_gray, None)
-
-        # Match features using BFMatcher
-        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-        matches = bf.match(des1, des2)
-
-        # Sort matches by distance
-        matches = sorted(matches, key=lambda x: x.distance)
-
-        # Calculate the score as the number of good matches
-        score = len(matches)
-        if score > best_score:
-            best_score = score
-            best_match_idx = i
-
-    return best_match_idx, best_score
-
 
 
 
@@ -362,11 +214,8 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
     square_side = int(w * 0.23)
     roi_size = (square_side, square_side)
     
-    circle_size, tolerance = compute_circle_size_and_tolerance()
-    print(circle_size)
     circle_size = compute_circle_size_from_board(board)
     tolerance = 0.07 * circle_size
-    print(circle_size)
 
     orange_lower = np.array([4, 66, 114])
     orange_upper = np.array([15, 252, 253])
@@ -408,16 +257,16 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
     switch_wolf_animals = deque(maxlen=60)
     
     
-    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    game_fps = cap.get(cv2.CAP_PROP_FPS)
-    output_path = output_path
-    output_video = cv2.VideoWriter(
-        output_path,
-        cv2.VideoWriter_fourcc(*"DIVX"),
-        game_fps,
-        (original_width, original_height),
-    )
+    # original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    # original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    # game_fps = cap.get(cv2.CAP_PROP_FPS)
+    # output_path = output_path
+    # output_video = cv2.VideoWriter(
+    #     output_path,
+    #     cv2.VideoWriter_fourcc(*"DIVX"),
+    #     game_fps,
+    #     (original_width, original_height),
+    # )
 
     while True:
         ret, frame = cap.read()
@@ -495,19 +344,14 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
                 
             #Determining what animal it is----------------------------------
                 animal = extract_circle_region(frame, x, y, r)
-                # cv2.imshow("animal", animal)
-                # cv2.imshow("templates", template[0])
-                best_match_idx, best_score = match_templates(animal, templates)
-                # best_match_idx, best_score = match_features(animal, templates)                
+                best_match_idx, best_score = match_templates(animal, templates)         
                 detected_animals[best_match_idx] += 1
             #--------------------------------------------------------------
 
                 # Draw the circle on the frame
                 cv2.circle(frame, (x, y), r, (0, 255, 0), 2)
                 animals_coordinates.append((x,y))
-                #todelete
-                # cv2.putText(frame, f"{best_match_idx}", (x - r, y - r - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-                #
+
                 
             #Determining trading --------------               
                 #check if the circle is outside the board for trading
@@ -562,10 +406,7 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
             roi_size[1]
         )
 
-#Not detecting inside board
-        frame_with_border_masked = frame.copy()
-        cv2.rectangle(frame_with_border_masked, board[0], 
-                      board[3], (0, 0, 0), -1)
+
 #detect dog as circles, determine dog boxes, then frames it is in 
         roi_frame_right = frame[roi_bottom_right[1]:roi_bottom_right[1] + roi_bottom_right[3], 
                                roi_bottom_right[0]:roi_bottom_right[0] + roi_bottom_right[2]]
@@ -622,6 +463,11 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
             cv2.putText(frame, "Wolf attacked", (200, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
   
 # Detect dice
+        #Not detecting inside board
+        frame_with_border_masked = frame.copy()
+        cv2.rectangle(frame_with_border_masked, board[0], 
+                      board[3], (0, 0, 0), -1)
+        
         hsv_frame = cv2.cvtColor(frame_with_border_masked, cv2.COLOR_BGR2HSV)
         orange_mask = cv2.inRange(hsv_frame, orange_lower, orange_upper)
         blue_mask = cv2.inRange(hsv_frame, blue_lower, blue_upper)
@@ -683,14 +529,14 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
                 trackers[i] = None
 
         trackers = [t for t in trackers if t is not None]
-        output_video.write(frame)
+        # output_video.write(frame)
         
-        # cv2.imshow("Circles and Dice in Video", frame)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break
+        cv2.imshow("Circles and Dice in Video", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
     cap.release()
-    output_video.release()
+    # output_video.release()
     cv2.destroyAllWindows()
 
 
@@ -700,7 +546,7 @@ def detect_circles_and_dice_in_video(video_path, output_path=None):
 # detect_circles_and_dice_in_video('./materials/E2.MP4')
 # detect_circles_and_dice_in_video('./materials/E3.MP4')
 
-# detect_circles_and_dice_in_video('./materials/M1.MP4')
+detect_circles_and_dice_in_video('./materials/M1.MP4')
 # detect_circles_and_dice_in_video('./materials/M2.MP4')
 # detect_circles_and_dice_in_video('./materials/M3.MP4')
 
