@@ -44,3 +44,6 @@ Each video includes at least one of the five game events, with all events covere
 
 ## Conclusion
 The system performs well under easy conditions but struggles with harder datasets due to lighting and camera movement. Future improvements could focus on robust board position updates and angle distortion handling.
+
+##License
+This project is licensed under the MIT License.
